@@ -3,5 +3,4 @@ ultralytics
 pillow
 gtts
 speechrecognition
-anthropic
-pyaudio
+gdown
