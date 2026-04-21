@@ -1,0 +1,7 @@
+streamlit
+ultralytics
+pillow
+gtts
+speechrecognition
+anthropic
+pyaudio
