@@ -16,13 +16,6 @@ from ultralytics import YOLO
 from PIL import Image
 from gtts import gTTS
 
-# Speech recognition optionnel
-try:
-    import speech_recognition as sr
-    MICRO_DISPONIBLE = True
-except:
-    MICRO_DISPONIBLE = False
-
 # ===== CONFIGURATION =====
 st.set_page_config(
     page_title="Inspection Aéronautique ✈️",
@@ -43,7 +36,7 @@ def load_model():
 model = load_model()
 
 # ===== FONCTION AUDIO =====
-def text_to_audio_html(texte, auto_play=True):
+def text_to_audio_html(texte):
     try:
         text_clean = re.sub(r'[^\w\s.,!?:;%\-]', '', texte)
         tts = gTTS(text=text_clean, lang='fr', slow=False)
@@ -51,9 +44,8 @@ def text_to_audio_html(texte, auto_play=True):
         tts.write_to_fp(audio_buffer)
         audio_buffer.seek(0)
         audio_base64 = base64.b64encode(audio_buffer.read()).decode()
-        autoplay = "autoplay" if auto_play else ""
         audio_html = f"""
-        <audio {autoplay} controls style="width: 100%;">
+        <audio controls style="width: 100%;">
             <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
         </audio>
         """
@@ -67,15 +59,18 @@ def chatbot_reponse(question, contexte_defaut=""):
     question = question.lower()
     if "fissure" in question or "défaut" in question or "defaut" in question:
         return """🔧 Une fissure sur une pièce aéronautique est très sérieuse !
+
 Elle peut être causée par :
 - La fatigue du métal
 - Les vibrations répétées  
 - La corrosion
 - Les chocs mécaniques
+
 Action recommandée : Retirer immédiatement la pièce du service."""
 
     elif "réparer" in question or "reparer" in question:
         return """🛠️ Procédure de réparation :
+
 1. Isoler la pièce défectueuse
 2. Documenter le défaut
 3. Évaluer la gravité
@@ -84,19 +79,23 @@ Action recommandée : Retirer immédiatement la pièce du service."""
 
     elif "dangereux" in question or "danger" in question or "risque" in question:
         return """⚠️ Niveau de danger :
+
 🔴 CRITIQUE : Fissure structurelle → Vol interdit
 🟡 MODÉRÉ : Défaut mineur → Surveillance renforcée  
 🟢 FAIBLE : Corrosion superficielle → Traitement préventif"""
 
     elif "corrosion" in question:
         return """🔬 La corrosion aéronautique :
+
 - Corrosion galvanique
 - Corrosion par piqûres
 - Corrosion sous contrainte
+
 Traitement : Nettoyage chimique + protection NDT"""
 
     elif "rapport" in question:
         return """📋 Le rapport contient :
+
 1. Date de l'inspection
 2. Référence de la pièce
 3. Type de défaut détecté
@@ -105,6 +104,7 @@ Traitement : Nettoyage chimique + protection NDT"""
 
     elif "bonjour" in question or "salut" in question or "hello" in question:
         return """👋 Bonjour ! Je suis votre expert en maintenance aéronautique.
+
 Je peux vous aider sur :
 ✈️ Les défauts aéronautiques
 🔧 Les procédures de réparation
@@ -112,6 +112,7 @@ Je peux vous aider sur :
 
     else:
         return """🤖 Je suis l'assistant expert aéronautique.
+
 Posez-moi des questions sur :
 - Les fissures et défauts
 - Les réparations
@@ -190,7 +191,7 @@ with col_gauche:
 
         if st.button("🔊 Écouter le rapport", key="btn_audio_rapport"):
             with st.spinner("🎵 Génération audio..."):
-                audio_html = text_to_audio_html(rapport, auto_play=True)
+                audio_html = text_to_audio_html(rapport)
                 if audio_html:
                     st.markdown(audio_html, unsafe_allow_html=True)
 
@@ -226,48 +227,15 @@ with col_droite:
         if st.button("🔊 Écouter la réponse", key="btn_audio_chat"):
             with st.spinner("🎵 Génération audio..."):
                 audio_html = text_to_audio_html(
-                    st.session_state['derniere_reponse'],
-                    auto_play=True
+                    st.session_state['derniere_reponse']
                 )
                 if audio_html:
                     st.markdown(audio_html, unsafe_allow_html=True)
 
     st.divider()
     st.subheader("🎤 Parler avec le chatbot")
-    if not MICRO_DISPONIBLE:
-        st.warning("⚠️ Micro non disponible sur la version en ligne")
-        st.info("💡 Utilisez le chat texte ci-dessus !")
-    else:
-        if st.button("🎤 Enregistrer ma voix", key="btn_micro"):
-            with st.spinner("🎤 Parlez maintenant..."):
-                try:
-                    r = sr.Recognizer()
-                    with sr.Microphone() as source:
-                        st.info("🎤 Parlez (5 secondes max)...")
-                        r.adjust_for_ambient_noise(source)
-                        audio = r.listen(source, timeout=5, phrase_time_limit=5)
-                        texte_voix = r.recognize_google(audio, language='fr-FR')
-                        st.success(f"🎙️ Vous avez dit : **{texte_voix}**")
-                        contexte = f"Défaut: {st.session_state['defaut']}" if 'defaut' in st.session_state else ""
-                        reponse = chatbot_reponse(texte_voix, contexte)
-                        st.chat_message("assistant").write(reponse)
-                        audio_html = text_to_audio_html(reponse, auto_play=True)
-                        if audio_html:
-                            st.markdown(audio_html, unsafe_allow_html=True)
-                except Exception as e:
-                    st.error(f"❌ Erreur : {str(e)}")
-
-# ===== TEST AUDIO =====
-st.divider()
-col1, col2, col3 = st.columns([1, 2, 1])
-with col2:
-    if st.button("🎧 Tester l'audio", use_container_width=True):
-        test_msg = "Test audio. Le système fonctionne correctement."
-        with st.spinner("Test en cours..."):
-            audio_html = text_to_audio_html(test_msg, auto_play=True)
-            if audio_html:
-                st.markdown(audio_html, unsafe_allow_html=True)
-                st.success("✅ Test réussi !")
+    st.warning("⚠️ Micro non disponible sur la version en ligne")
+    st.info("💡 Utilisez le chat texte ci-dessus pour poser vos questions !")
 
 st.divider()
 st.caption("YaneCode Academy · ENSA Safi · Avril 2026")
