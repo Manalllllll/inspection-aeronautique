@@ -1,8 +1,17 @@
-import gdown
+import streamlit as st
+from ultralytics import YOLO
+from PIL import Image
+from gtts import gTTS
 import os
+import base64
+from io import BytesIO
+import re
+import datetime
+import gdown
 
-# Télécharger le modèle depuis Google Drive
-if not os.path.exists('model/best.pt'):
-    os.makedirs('model', exist_ok=True)
-    url = 'https://drive.google.com/uc?id=1VZ0FYrnueUsG4MRoOW5JDsZ_MMrL8L-M'
-    gdown.download(url, 'model/best.pt', quiet=False)
+# Speech recognition optionnel
+try:
+    import speech_recognition as sr
+    MICRO_DISPONIBLE = True
+except:
+    MICRO_DISPONIBLE = False
