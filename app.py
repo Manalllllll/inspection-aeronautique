@@ -1,18 +1,19 @@
 import streamlit as st
+import os
+import base64
+import datetime
+from io import BytesIO
+import gdown
+
+# Télécharger le modèle depuis Google Drive
+if not os.path.exists('model/best.pt'):
+    os.makedirs('model', exist_ok=True)
+    url = 'https://drive.google.com/uc?id=1VZ0FYrnueUsG4MRoOW5JDsZ_MMrL8L-M'
+    gdown.download(url, 'model/best.pt', quiet=False)
+
 from ultralytics import YOLO
 from PIL import Image
 from gtts import gTTS
-try:
-    import speech_recognition as sr
-    MICRO_DISPONIBLE = True
-except:
-    MICRO_DISPONIBLE = False
-import os
-import tempfile
-import base64
-from io import BytesIO
-import re
-import datetime
 
 # ===== CONFIGURATION =====
 st.set_page_config(
@@ -33,18 +34,16 @@ def load_model():
 
 model = load_model()
 
-# ===== FONCTION AUDIO HTML5 =====
-def text_to_audio_html(texte, auto_play=True):
+# ===== FONCTION AUDIO =====
+def text_to_audio_html(texte):
     try:
-        text_clean = re.sub(r'[^\w\s.,!?:;%\-]', '', texte)
-        tts = gTTS(text=text_clean, lang='fr', slow=False)
+        tts = gTTS(text=texte, lang='fr', slow=False)
         audio_buffer = BytesIO()
         tts.write_to_fp(audio_buffer)
         audio_buffer.seek(0)
         audio_base64 = base64.b64encode(audio_buffer.read()).decode()
-        autoplay = "autoplay" if auto_play else ""
         audio_html = f"""
-        <audio {autoplay} controls style="width: 100%;">
+        <audio controls style="width:100%;margin-top:10px;">
             <source src="data:audio/mp3;base64,{audio_base64}" type="audio/mp3">
         </audio>
         """
@@ -56,110 +55,89 @@ def text_to_audio_html(texte, auto_play=True):
 # ===== FONCTION CHATBOT =====
 def chatbot_reponse(question, contexte_defaut=""):
     question = question.lower()
-    
     if "fissure" in question or "défaut" in question or "defaut" in question:
         return """🔧 Une fissure sur une pièce aéronautique est très sérieuse !
-        
+
 Elle peut être causée par :
 - La fatigue du métal
-- Les vibrations répétées  
+- Les vibrations répétées
 - La corrosion
 - Les chocs mécaniques
 
-Action recommandée : Retirer immédiatement la pièce du service et contacter l'équipe de maintenance."""
+Action recommandée : Retirer immédiatement la pièce du service."""
 
     elif "réparer" in question or "reparer" in question:
         return """🛠️ Procédure de réparation :
-        
+
 1. Isoler la pièce défectueuse
-2. Documenter le défaut (photos, rapport)
-3. Évaluer la gravité (mineur/modéré/critique)
-4. Choisir la méthode : réparation ou remplacement
-5. Valider par un inspecteur certifié
-6. Tester avant remise en service"""
+2. Documenter le défaut
+3. Évaluer la gravité
+4. Choisir réparation ou remplacement
+5. Valider par un inspecteur certifié"""
 
     elif "dangereux" in question or "danger" in question or "risque" in question:
         return """⚠️ Niveau de danger :
-        
-🔴 CRITIQUE : Fissure sur pièce structurelle → Vol interdit
-🟡 MODÉRÉ : Défaut de surface mineur → Surveillance renforcée  
-🟢 FAIBLE : Légère corrosion superficielle → Traitement préventif
 
-Votre pièce nécessite une évaluation par un expert certifié."""
+🔴 CRITIQUE : Fissure structurelle → Vol interdit
+🟡 MODÉRÉ : Défaut mineur → Surveillance renforcée
+🟢 FAIBLE : Corrosion superficielle → Traitement préventif"""
 
     elif "corrosion" in question:
         return """🔬 La corrosion aéronautique :
-        
-Types principaux :
-- Corrosion galvanique (2 métaux différents)
-- Corrosion par piqûres (aluminium)
+
+- Corrosion galvanique
+- Corrosion par piqûres
 - Corrosion sous contrainte
 
-Traitement : Nettoyage chimique + protection + inspection NDT"""
+Traitement : Nettoyage chimique et protection NDT"""
 
     elif "rapport" in question:
-        return """📋 Le rapport d'inspection contient :
-        
-1. Date et heure de l'inspection
-2. Référence de la pièce (P/N, S/N)
+        return """📋 Le rapport contient :
+
+1. Date de l'inspection
+2. Référence de la pièce
 3. Type de défaut détecté
-4. Niveau de confiance de l'IA
-5. Décision recommandée
-6. Signature de l'inspecteur"""
+4. Niveau de confiance
+5. Décision recommandée"""
 
     elif "bonjour" in question or "salut" in question or "hello" in question:
         return """👋 Bonjour ! Je suis votre expert en maintenance aéronautique.
 
 Je peux vous aider sur :
-✈️ Les types de défauts aéronautiques
+✈️ Les défauts aéronautiques
 🔧 Les procédures de réparation
-📋 L'interprétation des rapports
-⚠️ Les niveaux de danger
-
-Posez-moi votre question !"""
+📋 Les rapports d'inspection"""
 
     else:
-        return """🤖 Je suis l'assistant expert en inspection aéronautique.
+        return """🤖 Je suis l'assistant expert aéronautique.
 
-Je peux répondre à vos questions sur :
+Posez-moi des questions sur :
 - Les fissures et défauts
-- Les procédures de réparation  
-- Les niveaux de danger
+- Les réparations
 - La corrosion
-- Les rapports d'inspection
-
-Reformulez votre question avec ces mots clés 😊"""
+- Les rapports d'inspection"""
 
 # ===== FONCTION RAPPORT =====
 def generer_rapport(defaut, confiance):
     now = datetime.datetime.now().strftime('%d/%m/%Y %H:%M')
     if defaut == "Positive":
-        rapport = f"""
-RAPPORT D INSPECTION AERONAUTIQUE
-=====================================
-Date : {now}
-Resultat : DEFAUT DETECTE
-Type : Fissure et Anomalie de surface
-Confiance : {confiance:.1f}%
-Niveau de risque : ELEVE
-Decision : PIECE A REPARER IMMEDIATEMENT
-Action : Retirer la piece du service
-et proceder a une inspection approfondie.
-====================================="""
+        return f"""Rapport d'inspection aéronautique.
+Date : {now}.
+Résultat : Défaut détecté.
+Type : Fissure et anomalie de surface.
+Confiance : {confiance:.1f} pourcent.
+Niveau de risque : Élevé.
+Décision : Pièce à réparer immédiatement.
+Action : Retirer la pièce du service et procéder à une inspection approfondie."""
     else:
-        rapport = f"""
-RAPPORT D INSPECTION AERONAUTIQUE
-=====================================
-Date : {now}
-Resultat : PIECE EN BON ETAT
-Type : Surface saine
-Confiance : {confiance:.1f}%
-Niveau de risque : FAIBLE
-Decision : PIECE ACCEPTABLE
-Action : La piece peut etre utilisee
-normalement en service.
-====================================="""
-    return rapport
+        return f"""Rapport d'inspection aéronautique.
+Date : {now}.
+Résultat : Pièce en bon état.
+Type : Surface saine.
+Confiance : {confiance:.1f} pourcent.
+Niveau de risque : Faible.
+Décision : Pièce acceptable.
+Action : La pièce peut être utilisée normalement en service."""
 
 # ===== LAYOUT =====
 col_gauche, col_droite = st.columns([1, 1])
@@ -167,29 +145,25 @@ col_gauche, col_droite = st.columns([1, 1])
 # ===== COLONNE GAUCHE =====
 with col_gauche:
     st.subheader("📸 Upload & Analyse")
-    
     photo = st.file_uploader(
         "Choisissez une image de pièce...",
         type=['jpg', 'jpeg', 'png']
     )
-    
+
     if photo is not None:
         image = Image.open(photo)
         st.image(image, caption="Photo uploadée", width=400)
-        
+
         if st.button("🔍 Analyser la pièce", type="primary"):
             with st.spinner("⏳ L'IA analyse..."):
                 results = model.predict(image, conf=0.5)
                 defaut = results[0].names[results[0].probs.top1]
                 confiance = results[0].probs.top1conf.item() * 100
-            
-            # Sauvegarder TOUT dans session_state
             st.session_state['defaut'] = defaut
             st.session_state['confiance'] = confiance
             st.session_state['rapport'] = generer_rapport(defaut, confiance)
             st.session_state['analyse_faite'] = True
 
-    # Afficher résultats TOUJOURS si analyse faite
     if st.session_state.get('analyse_faite'):
         defaut = st.session_state['defaut']
         confiance = st.session_state['confiance']
@@ -201,107 +175,62 @@ with col_gauche:
             c1.metric("Type", "Fissure")
             c2.metric("Confiance", f"{confiance:.1f}%")
             c3.metric("Décision", "À RÉPARER")
+            st.error(rapport)
         else:
             st.success("✅ PIÈCE EN BON ÉTAT !")
             c1, c2, c3 = st.columns(3)
             c1.metric("Type", "Saine")
             c2.metric("Confiance", f"{confiance:.1f}%")
             c3.metric("Décision", "ACCEPTABLE")
-
-        st.subheader("📋 Rapport automatique :")
-        st.code(rapport)
+            st.success(rapport)
 
         if st.button("🔊 Écouter le rapport", key="btn_audio_rapport"):
             with st.spinner("🎵 Génération audio..."):
-                audio_html = text_to_audio_html(rapport, auto_play=True)
+                audio_html = text_to_audio_html(rapport)
                 if audio_html:
                     st.markdown(audio_html, unsafe_allow_html=True)
-                    st.success("✅ Audio généré !")
 
 # ===== COLONNE DROITE =====
 with col_droite:
     st.subheader("💬 Chatbot Expert Aéronautique")
-    
+
     if 'messages' not in st.session_state:
         st.session_state['messages'] = []
-    
+
     for msg in st.session_state['messages']:
         if msg['role'] == 'user':
             st.chat_message("user").write(msg['content'])
         else:
             st.chat_message("assistant").write(msg['content'])
-    
+
     question = st.chat_input("Posez votre question...")
-    
+
     if question:
         st.session_state['messages'].append({
-            'role': 'user', 
-            'content': question
+            'role': 'user', 'content': question
         })
         st.chat_message("user").write(question)
-        
         contexte = f"Défaut: {st.session_state['defaut']}" if 'defaut' in st.session_state else ""
         reponse = chatbot_reponse(question, contexte)
-        
         st.session_state['messages'].append({
-            'role': 'assistant', 
-            'content': reponse
+            'role': 'assistant', 'content': reponse
         })
         st.chat_message("assistant").write(reponse)
         st.session_state['derniere_reponse'] = reponse
-    
-    # Bouton écouter réponse
+
     if 'derniere_reponse' in st.session_state:
         if st.button("🔊 Écouter la réponse", key="btn_audio_chat"):
             with st.spinner("🎵 Génération audio..."):
                 audio_html = text_to_audio_html(
-                    st.session_state['derniere_reponse'],
-                    auto_play=True
+                    st.session_state['derniere_reponse']
                 )
                 if audio_html:
                     st.markdown(audio_html, unsafe_allow_html=True)
 
     st.divider()
-
-    # ===== DÉTECTION VOCALE =====
-st.subheader("🎤 Parler avec le chatbot")
-    if not MICRO_DISPONIBLE:
-        st.warning("⚠️ Micro non disponible sur la version en ligne")
-        st.info("💡 Utilisez le chat texte ci-dessus !")
-    else:
-        if st.button("🎤 Enregistrer ma voix", key="btn_micro"):
-            with st.spinner("🎤 Parlez maintenant..."):
-                try:
-                    r = sr.Recognizer()
-                    with sr.Microphone() as source:
-                        st.info("🎤 Parlez maintenant (5 secondes max)...")
-                        r.adjust_for_ambient_noise(source)
-                        audio = r.listen(source, timeout=5, phrase_time_limit=5)
-                        texte_voix = r.recognize_google(audio, language='fr-FR')
-                        st.success(f"🎙️ Vous avez dit : **{texte_voix}**")
-                        contexte = f"Défaut: {st.session_state['defaut']}" if 'defaut' in st.session_state else ""
-                        reponse = chatbot_reponse(texte_voix, contexte)
-                        st.chat_message("assistant").write(reponse)
-                        audio_html = text_to_audio_html(reponse, auto_play=True)
-                        if audio_html:
-                            st.markdown(audio_html, unsafe_allow_html=True)
-                except sr.WaitTimeoutError:
-                    st.warning("⏰ Délai dépassé. Réessayez.")
-                except sr.UnknownValueError:
-                    st.error("❌ Je n'ai pas compris. Réessayez.")
-                except Exception as e:
-                    st.error(f"❌ Erreur : {str(e)}")
-# ===== TEST AUDIO =====
-st.divider()
-col_test1, col_test2, col_test3 = st.columns([1, 2, 1])
-with col_test2:
-    if st.button("🎧 Tester l'audio", use_container_width=True):
-        test_msg = "Test audio. Si vous entendez ce message, le système fonctionne correctement."
-        with st.spinner("Test en cours..."):
-            audio_html = text_to_audio_html(test_msg, auto_play=True)
-            if audio_html:
-                st.markdown(audio_html, unsafe_allow_html=True)
-                st.success("✅ Test réussi !")
+    st.subheader("🎤 Parler avec le chatbot")
+    st.warning("⚠️ Micro non disponible sur la version en ligne")
+    st.info("💡 Utilisez le chat texte ci-dessus !")
 
 st.divider()
 st.caption("YaneCode Academy · ENSA Safi · Avril 2026")
