@@ -1,6 +1,7 @@
 streamlit
-ultralytics
 pillow
 gtts
 speechrecognition
 gdown
+opencv-python-headless
+ultralytics
